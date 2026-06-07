@@ -19,10 +19,30 @@ A transcript is an ordered list of **tokens**:
 - `redact(id)` — mask a token
 - `finalize()` / `commit` — mark all (or up to a point) `final`
 
-## 2. Provider adapters (one per platform, same target model)
-- **Deepgram** — `is_final` → `state`; word `confidence`; a word changing between interim results → `revise`.
-- **Apple SpeechAnalyzer** — volatile vs finalized results → `state`; `AttributedString` runs → tokens.
-- **AssemblyAI / Whisper-stream** — partial→final transcripts → append/revise/finalize.
+## 2. The canonical ASR result (the integration surface)
+Every provider/tier maps to **one** type — the only thing an integrator writes:
+```
+ASRWord   = { text, start?, end?, confidence? }   // times in seconds
+ASRResult = { words?, transcript?, isFinal, utteranceId? }
+```
+Required minimum: `transcript` (or `words`) + `isFinal`. Optional fields unlock more:
+`confidence` → ink-settle; `start/end` → clean time-aligned combining. Adapters: Deepgram
+(`deepgramToASR`), Apple SpeechAnalyzer (volatile/finalized), WhisperKit / AssemblyAI, and a
+generic `transcript`-only path. Missing word list → we tokenize `transcript`.
+
+## 2b. The Reconciler (1+ sources → one token timeline)
+`TranscriptReconciler.ingest(result, role)` turns ASR streams into token events.
+**"Two tiers of one model" and "two combined models" are identical here** — both are a
+*draft* stream + a *refinement* stream over one audio timeline.
+- **`draft`** (fast tier) — reconciles the active utterance by word index; what the user sees instantly (volatile, light ink).
+- **`refined`** (slow tier) — re-aligns onto the active utterance, reusing token ids so corrections *diff-morph* instead of redrawing:
+  - **time-align** (words have `start/end`) — surgical revise / insert / delete by time-overlap;
+  - **index-align** (no timestamps) — fallback by position.
+
+Verified identical on web + Swift against shared fixtures (single-source streaming, two-source
+time-aligned substitution with id preserved, refiner deletion, no-timestamp fallback).
+Known edge: a mid-utterance insertion whose time overlaps an existing word may resolve as
+revise+append rather than a clean insert — text-aware alignment is the noted upgrade.
 
 ## 3. Visual behaviour (the signature — implement identically on both platforms)
 - **Base — Ink-settle:** confidence + state render as **type weight + opacity**.

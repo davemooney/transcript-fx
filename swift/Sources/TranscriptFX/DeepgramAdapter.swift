@@ -5,10 +5,21 @@ public struct DeepgramWord: Decodable, Sendable {
     public let word: String
     public let punctuatedWord: String?
     public let confidence: Double
+    public let start: Double?
+    public let end: Double?
     enum CodingKeys: String, CodingKey {
-        case word, confidence
+        case word, confidence, start, end
         case punctuatedWord = "punctuated_word"
     }
+}
+
+/// Map a Deepgram result to the canonical ASRResult (feed a TranscriptReconciler).
+public func deepgramToASR(_ res: DeepgramResult) -> ASRResult {
+    let alt = res.channel?.alternatives.first
+    let words = (alt?.words ?? []).map {
+        ASRWord(text: $0.punctuatedWord ?? $0.word, start: $0.start, end: $0.end, confidence: $0.confidence)
+    }
+    return ASRResult(words: words, transcript: alt?.transcript, isFinal: res.isFinal ?? false)
 }
 public struct DeepgramAlternative: Decodable, Sendable {
     public let transcript: String

@@ -1,8 +1,12 @@
 /** Deepgram streaming → transcript-fx events (SPEC §2). See repo SPEC.md. */
+import type { ASRResult } from './asr'
+
 export interface DeepgramWord {
   word: string
   punctuated_word?: string
   confidence: number
+  start?: number
+  end?: number
 }
 export interface DeepgramAlternative {
   transcript: string
@@ -19,6 +23,18 @@ export interface TranscriptSink {
   revise(id: string, text: string): void
   remove?(id: string): void
   finalize?(): void
+}
+
+/** Map a Deepgram result to the canonical ASRResult (feed a TranscriptReconciler). */
+export function deepgramToASR(res: DeepgramResult): ASRResult {
+  const alt = res.channel?.alternatives?.[0]
+  const words = (alt?.words ?? []).map((w) => ({
+    text: w.punctuated_word ?? w.word,
+    confidence: w.confidence,
+    start: w.start,
+    end: w.end,
+  }))
+  return { words, transcript: alt?.transcript, isFinal: !!res.is_final }
 }
 
 export function createDeepgramConsumer(sink: TranscriptSink) {
