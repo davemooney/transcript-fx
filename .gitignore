@@ -1,0 +1,17 @@
+# dependencies
+node_modules/
+**/node_modules/
+
+# builds / outputs
+dist/
+**/dist/
+.build/
+swift/.build/
+*.tsbuildinfo
+
+# misc
+.DS_Store
+*.log
+.turbo/
+coverage/
+.vite/

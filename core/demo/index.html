@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>&lt;revising-text&gt; — Web Component demo</title>
+    <style>
+      body { background: radial-gradient(1100px 520px at 50% -8%, #15161b 0%, #09090b 60%); margin: 0; min-height: 100vh; font-family: ui-sans-serif, system-ui, sans-serif; color: #fafafa; }
+      main { max-width: 660px; margin: 0 auto; padding: 64px 24px; }
+      h1 { font-size: 1.9rem; letter-spacing: -0.03em; margin: 0; }
+      p.sub { color: #a1a1aa; margin: 6px 0 26px; }
+      .card { border: 1px solid #27272a; border-radius: 18px; padding: 26px 28px; background: #0e0e11; }
+      revising-text { --rt-font: 1.35rem/1.85 ui-sans-serif, system-ui, sans-serif; }
+      footer { margin-top: 24px; color: #52525b; font-size: 0.82rem; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>&lt;revising-text&gt;</h1>
+      <p class="sub">Framework-agnostic Web Component — same effect, zero React.</p>
+      <div class="card"><revising-text id="rt"></revising-text></div>
+      <footer>One custom element. Drop into React, Vue, or plain HTML.</footer>
+    </main>
+    <script type="module">
+      import '../dist/index.js'
+      const rt = document.getElementById('rt')
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+      async function run() {
+        while (true) {
+          rt.clear(); await sleep(500)
+          rt.pushToken('1', 'okay', 0.95); await sleep(180)
+          rt.pushToken('2', 'so', 0.9); await sleep(180)
+          rt.pushToken('3', 'the', 0.95); await sleep(180)
+          rt.pushToken('4', 'cue', 0.4); await sleep(180)
+          rt.pushToken('5', 'deck', 0.9); await sleep(180)
+          rt.revise('4', 'Q3'); await sleep(650)
+          rt.pushToken('6', 'for', 0.9); await sleep(180)
+          rt.pushToken('7', 'Acme', 0.5); await sleep(180)
+          rt.pushToken('8', 'is', 0.9); await sleep(180)
+          rt.pushToken('9', 'to', 0.4); await sleep(180)
+          rt.pushToken('10', 'weeks', 0.9); await sleep(180)
+          rt.pushToken('11', 'out', 0.9); await sleep(700)
+          rt.revise('9', 'two'); await sleep(950)
+          rt.redact('7'); await sleep(1100)
+          rt.finalize(); await sleep(3000)
+        }
+      }
+      run()
+    </script>
+  </body>
+</html>

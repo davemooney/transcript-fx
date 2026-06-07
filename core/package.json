@@ -1,0 +1,23 @@
+{
+  "name": "@transcript-fx/core",
+  "version": "0.0.0",
+  "description": "Framework-agnostic <revising-text> Web Component — live, self-revising transcription text (ink-settle + diff-morph + swipe redaction).",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": ["web-component", "transcription", "deepgram", "speech-to-text", "ui"],
+  "devDependencies": {
+    "tsup": "^8.3.0",
+    "typescript": "^5.5.0"
+  }
+}
