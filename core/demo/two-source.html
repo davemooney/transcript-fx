@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>transcript-fx — two-source (draft + refiner)</title>
+    <style>
+      body { background: radial-gradient(1100px 520px at 50% -8%, #15161b 0%, #09090b 60%); margin: 0; min-height: 100vh; font-family: ui-sans-serif, system-ui, sans-serif; color: #fafafa; }
+      main { max-width: 680px; margin: 0 auto; padding: 60px 24px; }
+      h1 { font-size: 1.85rem; letter-spacing: -0.03em; margin: 0; }
+      p.sub { color: #a1a1aa; margin: 6px 0 22px; }
+      .tiers { display: flex; gap: 10px; align-items: center; margin-bottom: 18px; }
+      .chip { display: inline-flex; align-items: center; gap: 7px; border: 1px solid #27272a; border-radius: 999px; padding: 6px 13px; font-size: 0.82rem; color: #71717a; transition: all .25s ease; }
+      .chip .dot { width: 8px; height: 8px; border-radius: 50%; background: #3f3f46; }
+      .chip.draft.on { color: #fde68a; border-color: #b4881f; }
+      .chip.draft.on .dot { background: #fbbf24; box-shadow: 0 0 10px #fbbf24; }
+      .chip.refined.on { color: #6ee7b7; border-color: #1f6f53; }
+      .chip.refined.on .dot { background: #34d399; box-shadow: 0 0 10px #34d399; }
+      .arrow { color: #3f3f46; }
+      .card { border: 1px solid #27272a; border-radius: 18px; padding: 26px 28px; background: #0e0e11; min-height: 96px; }
+      revising-text { --rt-font: 1.5rem/1.7 ui-sans-serif, system-ui, sans-serif; }
+      .caption { margin-top: 16px; color: #52525b; font-size: 0.84rem; min-height: 1.3em; }
+      .caption b { color: #a1a1aa; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Two sources, one timeline</h1>
+      <p class="sub">A fast draft model + a slow refiner — combined through the reconciler.</p>
+      <div class="tiers">
+        <span class="chip draft" id="chip-draft"><span class="dot"></span> ⚡ Parakeet · draft</span>
+        <span class="arrow">→</span>
+        <span class="chip refined" id="chip-refined"><span class="dot"></span> ✦ Whisper · refiner</span>
+      </div>
+      <div class="card"><revising-text id="rt"></revising-text></div>
+      <p class="caption" id="caption"></p>
+    </main>
+    <script type="module">
+      import { TranscriptReconciler } from '../dist/index.js'
+
+      const el = document.getElementById('rt')
+      const recon = new TranscriptReconciler({ onChange: (t) => { el.tokens = t } })
+
+      const chipDraft = document.getElementById('chip-draft')
+      const chipRefined = document.getElementById('chip-refined')
+      const caption = document.getElementById('caption')
+      const setPhase = (p) => {
+        chipDraft.classList.toggle('on', p === 'draft')
+        chipRefined.classList.toggle('on', p === 'refined')
+        caption.innerHTML =
+          p === 'draft' ? 'Fast draft — instant but imperfect (<b>their</b>, <b>too</b>), shown light/low-confidence.'
+          : p === 'refined' ? 'Refiner re-decoded the utterance → corrections <b>diff-morph</b> in and settle solid.'
+          : ''
+      }
+
+      // fast draft (low confidence, 2 errors)
+      const draft = [
+        { text: 'their', start: 0.0, end: 0.4, confidence: 0.5 },
+        { text: 'meeting', start: 0.4, end: 0.9, confidence: 0.7 },
+        { text: 'is', start: 0.9, end: 1.1, confidence: 0.55 },
+        { text: 'at', start: 1.1, end: 1.4, confidence: 0.5 },
+        { text: 'too', start: 1.4, end: 1.8, confidence: 0.4 },
+        { text: 'thirty', start: 1.8, end: 2.2, confidence: 0.6 },
+      ]
+      // slow refiner (accurate, full utterance, final)
+      const refined = [
+        { text: 'there', start: 0.0, end: 0.4, confidence: 0.98 },
+        { text: 'meeting', start: 0.4, end: 0.9, confidence: 0.98 },
+        { text: 'is', start: 0.9, end: 1.1, confidence: 0.98 },
+        { text: 'at', start: 1.1, end: 1.4, confidence: 0.98 },
+        { text: 'two', start: 1.4, end: 1.8, confidence: 0.98 },
+        { text: 'thirty', start: 1.8, end: 2.2, confidence: 0.98 },
+      ]
+
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+      async function run() {
+        while (true) {
+          recon.reset(); setPhase('idle'); await sleep(700)
+          setPhase('draft')
+          for (let i = 1; i <= draft.length; i++) {
+            recon.ingest({ words: draft.slice(0, i), isFinal: false }, 'draft')
+            await sleep(240)
+          }
+          await sleep(1300) // hold the imperfect fast draft
+          setPhase('refined')
+          recon.ingest({ words: refined, isFinal: true }, 'refined')
+          await sleep(2800)
+        }
+      }
+      run()
+    </script>
+  </body>
+</html>

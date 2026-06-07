@@ -28,6 +28,8 @@ const CSS = `
 .rt-tok[data-state="volatile"] { font-weight: 300; opacity: .6; }
 .rt-tok[data-state="volatile"][data-low="1"] { font-weight: 200; opacity: .4; }
 .rt-tok[data-state="final"] { font-weight: 600; opacity: 1; }
+.rt-tok.rt-appear { animation: rt-appear .3s ease; }
+@keyframes rt-appear { from { transform: translateY(4px); filter: blur(3px); } }
 .rt-dm { display: inline-block; white-space: pre; animation: rt-dm-in .4s cubic-bezier(.2,.8,.2,1) both; }
 @keyframes rt-dm-in { from { opacity: 0; filter: blur(4px); transform: translateY(.22em); } to { opacity: 1; filter: blur(0); transform: none; } }
 .rt-flash { animation: rt-flash 1.1s ease-out; border-radius: 4px; }
@@ -128,7 +130,7 @@ export class RevisingTextElement extends HTMLElement {
       let entry = this.entries.get(tok.id)
       if (!entry) {
         const el = document.createElement('span')
-        el.className = 'rt-tok'
+        el.className = 'rt-tok rt-appear'
         this.container.appendChild(el)
         entry = { el, text: '', redacted: false }
         this.entries.set(tok.id, entry)
@@ -141,6 +143,12 @@ export class RevisingTextElement extends HTMLElement {
         this.entries.delete(id)
       }
     }
+    // keep DOM order in sync with token order (handles refiner inserts/reorders)
+    this._tokens.forEach((tok, idx) => {
+      const el = this.entries.get(tok.id)!.el
+      const current = this.container.children[idx]
+      if (current !== el) this.container.insertBefore(el, current ?? null)
+    })
   }
 
   private renderToken(entry: Entry, tok: RTToken): void {
