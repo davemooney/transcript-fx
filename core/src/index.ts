@@ -1,4 +1,4 @@
-export * from './revising-text'
+export * from './revising-text' // includes bindReconciler
 export * from './asr'
 export { TranscriptReconciler } from './reconciler'
 export type { ReconToken, ReconcilerOptions } from './reconciler'

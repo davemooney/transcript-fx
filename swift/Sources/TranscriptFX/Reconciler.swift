@@ -148,3 +148,10 @@ public final class TranscriptReconciler {
 func overlap(_ a0: Double, _ a1: Double, _ b0: Double, _ b1: Double) -> Double {
     max(0, min(a1, b1) - max(a0, b0))
 }
+
+public extension Token {
+    /// Bridge a reconciler token into the render token type.
+    init(_ r: ReconToken) {
+        self.init(id: r.id, text: r.text, state: r.state, confidence: r.confidence)
+    }
+}

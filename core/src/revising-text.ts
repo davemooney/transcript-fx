@@ -9,6 +9,7 @@
  */
 
 import type { TranscriptSink } from './deepgram'
+import { TranscriptReconciler, type ReconToken } from './reconciler'
 
 export interface RTToken {
   id: string
@@ -201,4 +202,14 @@ export class RevisingTextElement extends HTMLElement {
 
 if (typeof customElements !== 'undefined' && !customElements.get('revising-text')) {
   customElements.define('revising-text', RevisingTextElement)
+}
+
+/** Convenience: a reconciler whose output is bound straight to this element.
+ *  `const recon = bindReconciler(el); recon.ingest(asrResult, 'draft')` */
+export function bindReconciler(el: RevisingTextElement): TranscriptReconciler {
+  return new TranscriptReconciler({
+    onChange: (tokens: ReconToken[]) => {
+      el.tokens = tokens as unknown as RTToken[]
+    },
+  })
 }

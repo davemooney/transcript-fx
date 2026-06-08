@@ -13,7 +13,8 @@
   "files": ["dist"],
   "scripts": {
     "build": "tsup",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepare": "tsup"
   },
   "keywords": ["web-component", "transcription", "deepgram", "speech-to-text", "ui"],
   "devDependencies": {
