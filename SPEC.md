@@ -1,5 +1,14 @@
 # transcript-fx — Spec (v0.1)
 
+> **Status:** this v0.1 contract is what `core/` (web) implements. The Swift
+> package has moved on to the **v2 presentation-framework contract** —
+> canonical `TranscriptUpdate` input (tiers · timestamps · confidence ·
+> speakers · utterances), an utterance-based reconciler with explicit
+> revision events (revise/replace/split/merge/speaker-change/sentence- and
+> paragraph-breaks), and a speaker-aware paragraph renderer with rendering
+> modes — documented in [`swift/README.md`](./swift/README.md). Porting v2
+> back to the web core is the natural next step.
+
 The shared contract for "live, self-revising transcription text." Two native implementations (web + SwiftUI) conform to **this** — same input model, same behaviour, same config — so the SwiftUI build is a *port*, not a redesign.
 
 ## 1. Input model (normalized, provider-agnostic)

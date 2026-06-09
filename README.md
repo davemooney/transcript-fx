@@ -1,15 +1,20 @@
 # transcript-fx
 
-Live, self-revising transcription text — done with craft. As speech-to-text streams, words arrive *volatile*, **correct themselves in place**, redact sensitive spans, and settle when final. One spec, two native runtimes (**Web** + **SwiftUI**), and **any** ASR drops in via a single mapping.
+Live, self-revising transcription text — done with craft. As speech-to-text streams, words arrive *provisional*, **correct themselves in place**, and settle when final.
+
+Two runtimes at different generations:
+
+- **`swift/` — TranscriptFX v2**, a full transcript **presentation framework**: canonical input model (tiers, timestamps, confidence, speakers), an utterance-based reconciler with explicit revision events (revise/split/merge/speaker-change/sentence- and paragraph-breaks), and a speaker-aware paragraph renderer with rendering modes. → [`swift/README.md`](./swift/README.md)
+- **`core/` — `@transcript-fx/core` v0.1** (web), the original flat token renderer + reconciler per [`SPEC.md`](./SPEC.md).
 
 ```
-        Deepgram · WhisperKit · Apple SpeechAnalyzer · your local rig
-                              │  map to ↓
-                          ASRResult                ← the only type you produce
-                              │  ingest ↓
-                      TranscriptReconciler          ← combines 1+ sources (draft + refiner)
-                              │  renders ↓
-              <revising-text>  /  RevisingText (SwiftUI)
+   your ASR · Deepgram · WhisperKit · Apple SpeechAnalyzer
+                  │  normalize ↓
+            TranscriptUpdate                ← the only type you produce (Swift v2)
+                  │  ingest ↓
+            TranscriptSession / Reconciler  ← aligns tiers, keeps token identity,
+                  │  snapshot ↓                emits revision events
+            TranscriptView                  ← words · sentences · paragraphs · speakers
 ```
 
 ## The signature
@@ -56,34 +61,38 @@ import SwiftUI
 import TranscriptFX
 
 struct LiveView: View {
-    @StateObject private var transcript = TranscriptStore()
+    @StateObject private var session = TranscriptSession(configuration: .twoTier)
 
     var body: some View {
-        RevisingText(tokens: transcript.tokens)
+        TranscriptView(snapshot: session.snapshot)
     }
 
-    // ── feed from any source ──
-    func onApple(_ r: SFSpeechRecognitionResult) { transcript.ingest(speechResultToASR(r)) }
-    func onWhisper(_ words: [WordTiming])        { transcript.ingest(whisperKitToASR(words, isFinal: true), role: .refined) }
-    func onLocalRig(_ text: String, final: Bool) { transcript.ingest(ASRResult(transcript: text, isFinal: final)) }
+    // ── tier-1 fast preview, streamed live ──
+    func onPreview(_ words: [TranscriptWord], done: Bool, id: String) {
+        session.ingest(TranscriptUpdate(words: words, tier: .preview, isFinal: done, utteranceID: id))
+    }
+    // ── tier-2 refinement, whenever it lands ──
+    func onRefined(_ words: [TranscriptWord], id: String) {
+        session.ingest(TranscriptUpdate(words: words, tier: .refined, isFinal: true, utteranceID: id))
+    }
 }
 ```
-WhisperKit glue is one line: `extension WordTiming: WhisperWordTiming {}`. → [`swift/README.md`](./swift/README.md)
+Corrections morph in place, sentences settle, paragraphs break on speaker change. Adapters for Apple Speech, WhisperKit, and Deepgram (with diarization) included. → [`swift/README.md`](./swift/README.md)
 
 ## Your local rig (the generic path)
-Whatever your local model emits, build an `ASRResult` and `ingest` it:
-- **Strings only** (no word timings): `ASRResult(transcript: "the quick brown", isFinal: false)` — we tokenize; ink by state.
-- **Word-level** (better): `words: [{ text, start?, end?, confidence? }]`.
-- **Two models** (fast + accurate): feed the fast one as `role: draft`, the accurate one as `role: refined` — the reconciler time-aligns the corrections onto the draft and diff-morphs them. (Same path whether it's two tiers of one model or two separate models.)
+Whatever your model emits, build a `TranscriptUpdate` and `ingest` it:
+- **Strings only**: `TranscriptUpdate(text: "the quick brown", tier: .preview, isFinal: false)` — we tokenize; ink by state.
+- **Word-level** (better): `words: [TranscriptWord(text:start:end:confidence:speaker:)]` — timestamps unlock surgical alignment, confidence unlocks ink-settle, speakers unlock paragraphs.
+- **Two tiers** (fast + accurate): feed the fast one as `tier: .preview`, the accurate one as `tier: .refined` — the reconciler aligns corrections onto the preview (timestamps first, text second) and diff-morphs them. Same path for two tiers of one model or two separate models.
 
 ---
 
 ## Layout
 | Path | What | Status |
 |---|---|---|
-| [`SPEC.md`](./SPEC.md) | The shared contract (model · behaviour · reconciler · config) | — |
-| `core/` | **`@transcript-fx/core`** — `<revising-text>` + reconciler + adapters | builds, renders, tested |
-| `swift/` | **`TranscriptFX`** — SwiftUI + reconciler + adapters (Deepgram/Apple/WhisperKit) | compiles, **9/9 tests** |
+| `swift/` | **`TranscriptFX` v2** — presentation framework: session + reconciler + TranscriptView + adapters | builds, **34/34 tests** |
+| [`SPEC.md`](./SPEC.md) | The v0.1 contract (still what `core/` implements) | — |
+| `core/` | **`@transcript-fx/core`** v0.1 — `<revising-text>` + reconciler + adapters | builds, renders, tested |
 | `src/` | React reference lab (visual playground: `npm i && npm run dev`) | runs |
 
-Reconciliation logic is verified **identical** on web + Swift against shared fixtures. MIT.
+The web core still implements the v0.1 flat-token contract; the Swift package has moved to the v2 presentation-framework model documented in [`swift/README.md`](./swift/README.md). MIT.
