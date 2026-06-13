@@ -138,6 +138,14 @@ private struct TokenView: View {
         (token.confidence ?? 1) < theme.confidenceThreshold
     }
 
+    /// Provisional tokens are the volatile tier-1 preview rewriting its own
+    /// un-committed text; they settle gently with no morph/flash. The
+    /// `.numericText()` scramble and the revision flash are the "a tier-2
+    /// correction landed" signature, reserved for `.revised` / `.finalized`
+    /// tokens (#5125). A token that streams in provisional and is only ever
+    /// corrected at a commit therefore flashes exactly once — at the commit.
+    private var isProvisional: Bool { token.state == .provisional }
+
     // Ink-settle: lifecycle state + confidence → weight + opacity.
     private var weight: Font.Weight {
         guard mode != .finalText else { return theme.finalizedWeight }
@@ -166,21 +174,32 @@ private struct TokenView: View {
     }
 
     private var textBody: some View {
-        Text(token.text)
+        // The morph treatment (numeric-text scramble + snappy timing + the
+        // revision flash) is the visible "tier-2 correction landed" signal and
+        // is reserved for non-provisional tokens. Provisional preview text just
+        // settles gently (opacity cross-fade, smooth timing) so the volatile
+        // tier-1 tail re-flows without flashing before a commit (#5125).
+        let morphs = motion && !isProvisional
+        return Text(token.text)
             .font(.system(size: theme.baseFontSize, weight: weight, design: theme.fontDesign))
             .foregroundStyle(speakerColor ?? .primary)
             .opacity(textOpacity)
-            .contentTransition(motion ? .numericText() : .identity)
+            .contentTransition(morphs ? .numericText() : (motion ? .opacity : .identity))
             .background(
                 RoundedRectangle(cornerRadius: 4)
                     .fill(theme.revisionFlashColor.opacity(flash ? 0.4 : 0))
                     .padding(-3)
             )
             .animation(motion ? .smooth(duration: theme.settleDuration) : nil, value: token.state)
-            .animation(motion ? .snappy(duration: theme.revisionDuration) : nil, value: token.text)
+            .animation(motion ? (morphs ? .snappy(duration: theme.revisionDuration)
+                                         : .smooth(duration: theme.settleDuration)) : nil,
+                       value: token.text)
             .animation(motion ? .easeOut(duration: theme.flashDuration) : nil, value: flash)
             .onChange(of: token.revision) { _, _ in
-                guard mode == .liveRevision, motion else { return }
+                // `revision` now only bumps on a refined correction, but keep
+                // the provisional guard explicit so the flash can never fire on
+                // a volatile preview token.
+                guard mode == .liveRevision, motion, !isProvisional else { return }
                 flash = true
                 Task {
                     try? await Task.sleep(for: .seconds(theme.flashDuration))

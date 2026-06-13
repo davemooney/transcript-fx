@@ -12,16 +12,72 @@ final class ReconcilerTests: XCTestCase {
 
     // MARK: Preview tier
 
-    func testPreviewStreamingRevisesInPlace() {
+    func testPreviewStreamingSettlesInPlaceWithoutRevise() {
+        // #5125: the volatile tier-1 preview re-flows its own un-committed
+        // text constantly. Rewriting an already-shown preview word updates the
+        // token's text and keeps its identity, but must NOT emit a `.revise`
+        // (the morph/flash trigger) nor bump `revision` — the morph is reserved
+        // for an actual tier-2 correction. New words still `.insert`.
         let r = TranscriptReconciler()
         r.apply(TranscriptUpdate(words: [TranscriptWord(text: "set"), TranscriptWord(text: "a")]))
         let id0 = r.snapshot.tokens[0].id
+        let rev0 = r.snapshot.tokens[0].revision
         let events = r.apply(TranscriptUpdate(words: [TranscriptWord(text: "said"), TranscriptWord(text: "a"), TranscriptWord(text: "timer")]))
 
-        XCTAssertEqual(texts(r), ["said", "a", "timer"])
+        XCTAssertEqual(texts(r), ["said", "a", "timer"], "preview text still updates")
         XCTAssertEqual(r.snapshot.tokens[0].id, id0, "interim correction must keep token identity")
-        XCTAssertTrue(events.contains(.revise(id: id0, oldText: "set", newText: "said")))
+        XCTAssertEqual(r.snapshot.tokens[0].revision, rev0, "a preview rewrite must NOT bump revision")
+        XCTAssertFalse(
+            events.contains { if case .revise = $0 { return true }; return false },
+            "a preview rewrite must NOT emit a flashing .revise"
+        )
         XCTAssertTrue(events.contains(.insert(id: r.snapshot.tokens[2].id, index: 2)))
+    }
+
+    /// #5125 — the core contract: a whole RECORDING's worth of growing +
+    /// self-rewriting preview ticks (the volatile tier-1 stream, never
+    /// prefix-stable) must produce ZERO `.revise` events and ZERO `revision`
+    /// bumps. The morph fires only when a tier-2 `.refined` correction lands.
+    func testGrowingRewritingPreviewNeverFlashesUntilRefinedCommit() {
+        let r = TranscriptReconciler(configuration: .twoTier)
+
+        // A sequence of preview ticks that both GROW and REWRITE earlier words
+        // (exactly what a rolling tier-1 segment does as it accretes audio).
+        let previewTicks = [
+            "the meetingg", // first decode
+            "the meeting iz", // "meetingg" → "meeting" rewrite + grow
+            "the meeting is at too", // grow
+            "the meeting is at two thirty", // "too" → "two" rewrite + grow
+        ]
+        for tick in previewTicks {
+            let events = r.apply(TranscriptUpdate(text: tick))
+            XCTAssertFalse(
+                events.contains { if case .revise = $0 { return true }; return false },
+                "preview tick '\(tick)' must not emit a flashing .revise"
+            )
+        }
+        XCTAssertTrue(
+            r.snapshot.tokens.allSatisfy { $0.revision == 0 },
+            "no preview rewrite may bump any token's revision before a commit"
+        )
+        XCTAssertTrue(
+            r.snapshot.tokens.allSatisfy { $0.state == .provisional },
+            "every preview token is still volatile/provisional"
+        )
+
+        // Now a tier-2 commit lands on the same span — THIS is the morph.
+        let id0 = r.snapshot.tokens[0].id
+        let refined = r.apply(TranscriptUpdate(text: "The meeting is at 2:30", tier: .refined, isFinal: false))
+        XCTAssertTrue(
+            refined.contains { if case .revise = $0 { return true }; return false },
+            "the refined correction MUST emit a .revise (the morph)"
+        )
+        // A word the refined pass actually changed must have bumped its revision.
+        XCTAssertGreaterThan(
+            r.snapshot.tokens[0].revision, 0,
+            "the corrected word's revision bumps at the refined commit"
+        )
+        XCTAssertEqual(r.snapshot.tokens[0].id, id0, "the morph reuses the token identity")
     }
 
     func testPreviewShrinkEmitsRemove() {

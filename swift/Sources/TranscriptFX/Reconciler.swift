@@ -389,6 +389,13 @@ public final class TranscriptReconciler {
     }
 
     /// Apply a word onto a token, emitting `revise`/`speakerChange` as needed.
+    ///
+    /// `.revise` is the flash/morph trigger ("a better model corrected this
+    /// word"). It is emitted ONLY for `.refined` writes. A `.preview` write is
+    /// the volatile tier-1 stream rewriting its own un-committed text — it
+    /// settles the token silently (text/state update, no `.revise`, no
+    /// `revision` bump) so already-shown preview words never flash before a
+    /// tier-2 commit actually lands (#5125).
     private func applyWord(
         _ w: TranscriptWord,
         to t: inout TranscriptToken,
@@ -397,7 +404,7 @@ public final class TranscriptReconciler {
         tier: SourceTier = .refined,
         state: TokenState = .revised
     ) {
-        if t.text != w.text {
+        if tier == .refined, t.text != w.text {
             events.append(.revise(id: t.id, oldText: t.text, newText: w.text))
         }
         setWord(w, on: &t, updateSpeaker: updateSpeaker, events: &events, tier: tier, state: state)
@@ -405,6 +412,12 @@ public final class TranscriptReconciler {
 
     /// Apply a word's content without a `revise` event (split/merge carry
     /// their own semantic event).
+    ///
+    /// `revision` is the view-layer flash/morph key — bumped ONLY on a
+    /// `.refined` text change (a tier-2 correction). A `.preview` text change
+    /// updates `text` silently so the volatile tier-1 stream re-flows its
+    /// own un-committed words without flashing already-shown text before a
+    /// commit (#5125). The text still updates, so the live tail stays current.
     private func setWord(
         _ w: TranscriptWord,
         on t: inout TranscriptToken,
@@ -415,7 +428,9 @@ public final class TranscriptReconciler {
     ) {
         if t.text != w.text {
             t.text = w.text
-            t.revision += 1
+            if tier == .refined {
+                t.revision += 1
+            }
         }
         t.tier = tier
         if t.state != .finalized {

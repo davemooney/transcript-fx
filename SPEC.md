@@ -24,7 +24,7 @@ A transcript is an ordered list of **tokens**:
 
 **Events** the source emits (the only API surface a provider adapter must drive):
 - `append(id, text, confidence?)` — new volatile token
-- `revise(id, text)` — correction; replaces text, bumps confidence
+- `revise(id, text)` — a tier-2 **correction**; replaces text, bumps confidence, triggers the morph/flash. A volatile tier-1 preview rewriting its own un-committed word settles silently instead (no `revise`, no flash) — the morph means "a refinement landed".
 - `redact(id)` — mask a token
 - `finalize()` / `commit` — mark all (or up to a point) `final`
 

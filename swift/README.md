@@ -87,6 +87,8 @@ session.onEvents = { events in
 
 `insert · remove · revise · replace · split · merge · finalize · speakerChange · sentenceBreak · paragraphBreak`
 
+**`.revise` is a tier-2 signal.** It (and the `revision` bump / flash that `.liveRevision` keys off) is emitted only when a `.refined` update changes a token's text — i.e. a real correction landed. The volatile tier-1 `.preview` stream rewrites its own un-committed words constantly as it re-decodes; those updates settle the token's text silently (no `.revise`, no `revision` bump, identity kept) so already-shown preview text never flashes before a refinement actually arrives. New preview words still `insert`; shrinking previews still `remove`.
+
 The reconciler is deterministic: same updates in, same tokens and events out. No clocks, no randomness.
 
 ## Rendering modes
