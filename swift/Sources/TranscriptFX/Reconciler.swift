@@ -497,10 +497,17 @@ public final class TranscriptReconciler {
             }
         }
         guard !runIDs.isEmpty else {
-            // Nothing changed: clear any leftover indices so a later morph (which
-            // restamps anyway) can't inherit a stale offset.
-            clearRunIndices(lastRunIDs)
-            lastRunIDs = []
+            // Nothing changed this apply — a no-op (e.g. a zero-event preview
+            // re-flow). Leave the current run's indices in place: clearing here
+            // would WIPE the run a sibling refined `apply` just stamped within the
+            // same coalesced snapshot frame (two-tier apps ingest preview + refined
+            // back-to-back per sync, and SwiftUI shows only the final snapshot), so
+            // the view would lose the left-to-right stagger and morph every word on
+            // one frame (offrecord #5141 regression). The next REAL commit still
+            // clears the previous run via `lastRunIDs.subtracting(runIDs)` below, so
+            // a stale index can never leak into a future morph. A preserved index on
+            // a non-morphing token is inert by contract (`revisionRunIndex` only
+            // matters on the frame a token's `revision` bumps).
             return
         }
         clearRunIndices(lastRunIDs.subtracting(runIDs))

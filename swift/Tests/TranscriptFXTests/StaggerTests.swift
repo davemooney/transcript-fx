@@ -227,4 +227,40 @@ final class StaggerTests: XCTestCase {
         XCTAssertEqual(survivor?.revisionRunIndex, 0, "merge's surviving token is in the run")
         XCTAssertGreaterThan(survivor?.revision ?? 0, 0, "the merged token bumped its revision (it morphs)")
     }
+
+    /// A zero-event apply (e.g. a two-tier app's trailing preview re-flow in the
+    /// SAME sync as a commit) must NOT clear the run the preceding refined commit
+    /// just stamped. SwiftUI coalesces both `@Published` snapshot writes into one
+    /// render, so a clear-on-no-op would leave the view with an all-zero run →
+    /// every word morphs on one frame (offrecord #5141 regression). The run is
+    /// preserved across the no-op; the NEXT real commit still clears it.
+    func testZeroEventApplyDoesNotClearTheStampedRun() {
+        let r = TranscriptReconciler(configuration: .twoTier)
+        // Rough preview, then a refined commit that morphs two words (stamps run).
+        r.apply(TranscriptUpdate(text: "helo wrld going on"))
+        let commit = r.apply(TranscriptUpdate(text: "hello world going on", tier: .refined, isFinal: false))
+        let revisedIDs = Set(commit.compactMap { event -> String? in
+            if case let .revise(id, _, _) = event { return id }
+            return nil
+        })
+        XCTAssertEqual(revisedIDs.count, 2, "the commit morphed two words")
+        let runBefore = r.snapshot.tokens.filter { revisedIDs.contains($0.id) }.map(\.revisionRunIndex)
+        XCTAssertEqual(runBefore, [0, 1], "the commit stamped a left-to-right run")
+
+        // A trailing preview re-flow of the SAME (already-correct) text → zero
+        // events (committed tokens are .revised so preview skips them; tail text
+        // unchanged). This must NOT wipe the run.
+        let trailing = r.apply(TranscriptUpdate(text: "hello world going on"))
+        XCTAssertTrue(trailing.isEmpty, "the trailing preview re-flow is a no-op")
+        let runAfter = r.snapshot.tokens.filter { revisedIDs.contains($0.id) }.map(\.revisionRunIndex)
+        XCTAssertEqual(
+            runAfter, [0, 1],
+            "a zero-event apply must preserve the stamped run (else the #5141 stagger dies under coalescing)"
+        )
+
+        // The next REAL commit still clears the prior run and stamps its own.
+        r.apply(TranscriptUpdate(text: "hello world going ON", tier: .refined, isFinal: false))
+        let firstTwo = Array(r.snapshot.tokens.prefix(2))
+        XCTAssertTrue(firstTwo.allSatisfy { $0.revisionRunIndex == 0 }, "the prior run is cleared by the next commit")
+    }
 }
