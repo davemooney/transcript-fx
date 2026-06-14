@@ -28,6 +28,9 @@ public final class TranscriptReconciler {
     private var tokenSeq = 0
     private var knownSentenceBreaks: Set<String> = []
     private var knownParagraphBreaks: Set<String> = []
+    /// Tokens carrying a non-zero `revisionRunIndex` from the previous commit, so
+    /// the next commit can clear them before numbering its own run (#5141).
+    private var lastRunIDs: Set<String> = []
 
     public init(configuration: ReconcilerConfiguration = ReconcilerConfiguration()) {
         self.configuration = configuration
@@ -38,6 +41,7 @@ public final class TranscriptReconciler {
         tokenSeq = 0
         knownSentenceBreaks = []
         knownParagraphBreaks = []
+        lastRunIDs = []
         snapshot = .empty
     }
 
@@ -49,6 +53,7 @@ public final class TranscriptReconciler {
         case .preview: applyPreview(update, events: &events)
         case .refined: applyRefined(update, events: &events)
         }
+        stampRevisionRun(from: events)
         rebuild(&events)
         return events
     }
@@ -465,6 +470,57 @@ public final class TranscriptReconciler {
 
     private func flatOffset(of utteranceIndex: Int) -> Int {
         utterances[..<utteranceIndex].reduce(0) { $0 + $1.tokens.count }
+    }
+
+    /// Stamp `revisionRunIndex` 0,1,2… (flat reading order) onto exactly the
+    /// tokens this commit corrected — the words that emitted a `.revise` event,
+    /// i.e. the morph's "changed run." The view staggers the morph by this index
+    /// so a commit ripples left-to-right (#5141). Prior-commit indices are cleared
+    /// first, so the snapshot only ever reflects the latest run and a token that
+    /// led the old run but isn't in the new one resets to 0.
+    private func stampRevisionRun(from events: [RevisionEvent]) {
+        var runIDs = Set<String>()
+        for event in events {
+            switch event {
+            case let .revise(id, _, _):
+                runIDs.insert(id)
+            // A merge's surviving token and a split's leading fragment keep their
+            // identity and morph in place (their text/revision changed), so they
+            // belong to the staggered run too. The other split fragments are fresh
+            // inserts, not morphs; `.replace` swaps identity — neither morphs.
+            case let .merge(_, into):
+                runIDs.insert(into)
+            case let .split(id, _):
+                runIDs.insert(id)
+            default:
+                break
+            }
+        }
+        guard !runIDs.isEmpty else {
+            // Nothing changed: clear any leftover indices so a later morph (which
+            // restamps anyway) can't inherit a stale offset.
+            clearRunIndices(lastRunIDs)
+            lastRunIDs = []
+            return
+        }
+        clearRunIndices(lastRunIDs.subtracting(runIDs))
+        var index = 0
+        for ui in utterances.indices {
+            for ti in utterances[ui].tokens.indices where runIDs.contains(utterances[ui].tokens[ti].id) {
+                utterances[ui].tokens[ti].revisionRunIndex = index
+                index += 1
+            }
+        }
+        lastRunIDs = runIDs
+    }
+
+    private func clearRunIndices(_ ids: Set<String>) {
+        guard !ids.isEmpty else { return }
+        for ui in utterances.indices {
+            for ti in utterances[ui].tokens.indices where ids.contains(utterances[ui].tokens[ti].id) {
+                utterances[ui].tokens[ti].revisionRunIndex = 0
+            }
+        }
     }
 
     /// Recompute segmentation, emit newly created boundary events, refresh

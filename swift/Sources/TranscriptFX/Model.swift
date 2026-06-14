@@ -129,6 +129,14 @@ public struct TranscriptToken: Identifiable, Equatable, Sendable {
     public var end: Seconds?
     public var speaker: SpeakerID?
     public var revision: Int
+    /// 0-based left-to-right position of this token within the most recent
+    /// tier-2 commit's *changed run* — the set of words that commit corrected,
+    /// numbered in reading order. The view uses it to stagger the morph so a
+    /// commit ripples left-to-right instead of flashing every changed word on the
+    /// same frame (#5141). Only meaningful on the frame a token morphs (its
+    /// `revision` just bumped); on settled/untouched tokens it is stale-but-inert
+    /// (they don't morph). 0 for a token never in a run.
+    public var revisionRunIndex: Int
 
     public init(
         id: String,
@@ -139,7 +147,8 @@ public struct TranscriptToken: Identifiable, Equatable, Sendable {
         start: Seconds? = nil,
         end: Seconds? = nil,
         speaker: SpeakerID? = nil,
-        revision: Int = 0
+        revision: Int = 0,
+        revisionRunIndex: Int = 0
     ) {
         self.id = id
         self.text = text
@@ -150,6 +159,7 @@ public struct TranscriptToken: Identifiable, Equatable, Sendable {
         self.end = end
         self.speaker = speaker
         self.revision = revision
+        self.revisionRunIndex = revisionRunIndex
     }
 
     public var isFinalized: Bool { state == .finalized }

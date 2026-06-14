@@ -133,6 +133,18 @@ private struct TokenView: View {
     let motion: Bool
 
     @State private var flash = false
+    /// Tracks the in-flight flash so a second commit on the same token cancels
+    /// the first instead of racing it — otherwise the earlier Task's deferred
+    /// `flash = false` could cut the new flash short, or leave it stuck (#5141).
+    @State private var flashTask: Task<Void, Never>?
+
+    /// How long to wait before this token's morph + flash, so the words a tier-2
+    /// commit changed animate one after another (left-to-right) rather than on the
+    /// same frame. `revisionRunIndex` is the token's position within that commit's
+    /// changed run, stamped by the reconciler (#5141).
+    private var revisionDelay: TimeInterval {
+        theme.revisionDelay(forIndex: token.revisionRunIndex)
+    }
 
     private var isLowConfidence: Bool {
         (token.confidence ?? 1) < theme.confidenceThreshold
@@ -191,7 +203,10 @@ private struct TokenView: View {
                     .padding(-3)
             )
             .animation(motion ? .smooth(duration: theme.settleDuration) : nil, value: token.state)
-            .animation(motion ? (morphs ? .snappy(duration: theme.revisionDuration)
+            // The morph is staggered by `revisionDelay` so a tier-2 commit ripples
+            // left-to-right rather than flashing every changed word on the same
+            // frame (#5141). Provisional settle keeps its un-delayed cross-fade.
+            .animation(motion ? (morphs ? .snappy(duration: theme.revisionDuration).delay(revisionDelay)
                                          : .smooth(duration: theme.settleDuration)) : nil,
                        value: token.text)
             .animation(motion ? .easeOut(duration: theme.flashDuration) : nil, value: flash)
@@ -200,12 +215,26 @@ private struct TokenView: View {
                 // the provisional guard explicit so the flash can never fire on
                 // a volatile preview token.
                 guard mode == .liveRevision, motion, !isProvisional else { return }
-                flash = true
-                Task {
-                    try? await Task.sleep(for: .seconds(theme.flashDuration))
+                // Cancel any flash still in flight from a prior commit so two
+                // rapid corrections can't fight over `flash` (#5141).
+                flashTask?.cancel()
+                let delay = revisionDelay
+                let hold = theme.flashDuration
+                flashTask = Task { @MainActor in
+                    // Match the morph's left-to-right stagger so this word's flash
+                    // lights up in step with its scramble (#5141).
+                    if delay > 0 {
+                        try? await Task.sleep(for: .seconds(delay))
+                        if Task.isCancelled { return }
+                    }
+                    flash = true
+                    try? await Task.sleep(for: .seconds(hold))
+                    // A superseding commit cancels us mid-hold; let it own `flash`.
+                    if Task.isCancelled { return }
                     flash = false
                 }
             }
+            .onDisappear { flashTask?.cancel() }
     }
 
     private var stateColor: Color {
