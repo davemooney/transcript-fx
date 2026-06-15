@@ -5,9 +5,11 @@ Framework-agnostic `<revising-text>` Web Component for live, self-revising trans
 ## Install
 ```bash
 # local (for now) — auto-builds on install via the prepare script
-npm install /ABS/PATH/to/transcript-fx/core
+npm install ./path/to/transcript-fx/core
 # once published:  npm install @transcript-fx/core
 ```
+Zero runtime dependencies. Ships ESM + type declarations. Node ≥ 18 for the
+test/build toolchain; the package itself runs in any modern browser.
 
 ## Quickest start
 ```js
@@ -40,6 +42,32 @@ recon.ingest(fastResult, 'draft')      // shown instantly, light/low-confidence
 recon.ingest(accurateResult, 'refined') // corrections morph in, settle solid
 ```
 
+## Explicit revision events
+Every `ingest` (and the reconciler's imperative `append`/`revise`/`redact`/`finalizeAll`)
+returns the semantic `RevisionEvent[]` it produced — no snapshot diffing. Drive
+haptics, a11y announcements, analytics, or custom rendering off them:
+```js
+const recon = new TranscriptReconciler({
+  onEvents: (events) => { /* [{ type:'revise', id, oldText, newText }, …] */ },
+})
+// or read the return value directly:
+const events = recon.ingest(refinedResult, 'refined')
+```
+Event types: `insert · remove · revise · replace · redact · finalize`.
+**`revise` (and the per-token `revision` bump the morph/flash keys off) fires only on
+a real tier-2 correction** — a volatile preview rewriting its own un-committed word
+settles silently, so already-shown text never flashes before a refinement lands.
+This is the same contract the SwiftUI runtime pins, so web ≡ Swift.
+
+## Replay a reference fixture
+```js
+import { replaySession } from '@transcript-fx/core'
+import seed from '../fixtures/seed-session.json' assert { type: 'json' }
+
+const { tokens, events } = replaySession(seed) // deterministic, timing-independent
+```
+The shared fixtures (SPEC §5) are how parity with the SwiftUI runtime is *tested*.
+
 ## Imperative API (no reconciler)
 The element is also a direct sink:
 ```js
@@ -61,4 +89,8 @@ revising-text { --rt-font: 1.4rem/1.7 system-ui; --rt-fg: #fafafa; }
 - **Vue:** add `revising-text` to `compilerOptions.isCustomElement`, then `:ref` and `bindReconciler`.
 - Honours `prefers-reduced-motion`.
 
-API: `bindReconciler`, `TranscriptReconciler`, `deepgramToASR`, `createDeepgramConsumer`, `RevisingTextElement`, types `ASRResult` / `ASRWord` / `ReconToken`.
+## API
+`bindReconciler` · `TranscriptReconciler` · `replaySession` · `deepgramToASR` · `createDeepgramConsumer` · `RevisingTextElement`.
+Types: `ASRResult` · `ASRWord` · `ReconToken` · `RevisionEvent` · `SessionFixture` · `SessionEvent`.
+
+Part of the [`*-fx` family](https://github.com/davemooney/transcript-fx#readme) (with [reason-fx](https://github.com/davemooney/reason-fx)). MIT.

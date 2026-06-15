@@ -9,9 +9,26 @@ dist/
 swift/.build/
 *.tsbuildinfo
 
+# secrets / credentials — NEVER commit (this repo is public)
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.key
+*.keystore
+*.crt
+secrets/
+
+# deploy
+.vercel
+.netlify
+
 # misc
 .DS_Store
+**/.DS_Store
 *.log
 .turbo/
 coverage/
 .vite/
+*.tgz

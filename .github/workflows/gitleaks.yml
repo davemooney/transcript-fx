@@ -1,0 +1,28 @@
+name: gitleaks
+
+# Continuously scan the FULL history (and every PR/push) for committed secrets.
+# This repo is public — a leaked key in any commit is permanent, so we gate on it.
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  schedule:
+    - cron: '0 6 * * 1' # weekly belt-and-braces sweep (Mon 06:00 UTC)
+  workflow_dispatch:
+
+jobs:
+  scan:
+    name: scan for secrets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # gitleaks needs the whole history, not a shallow clone
+
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # No GITLEAKS_LICENSE needed: this repo is a personal/public OSS repo
+          # (gitleaks-action is free for individual accounts).

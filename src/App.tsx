@@ -1,5 +1,6 @@
 import * as React from 'react'
 import { CORRECTION_EFFECTS, type EffectKey } from './effects'
+import seedSession from '../fixtures/seed-session.json'
 
 interface Token {
   id: string
@@ -26,38 +27,29 @@ type Step =
   | { op: 'redact'; id: string; gap?: number }
   | { op: 'finalize'; gap?: number }
 
-const W = (id: string, text: string, conf = 0.92, gap = 175): Step => ({ op: 'add', id, text, conf, gap })
+// The visual lab replays the SHARED reference fixture (../fixtures/seed-session.json,
+// SPEC §5) — the exact same recorded session the @transcript-fx/core parity test and
+// the SwiftUI demo replay. One source of truth → this React lab and the Swift build
+// are provably the *same interaction, two runtimes*. Map the runtime-agnostic source
+// events (append/revise/redact/finalize) onto this lab's step shape.
+type SeedEvent =
+  | { op: 'append'; id: string; text: string; confidence?: number; gap?: number }
+  | { op: 'revise'; id: string; text: string; gap?: number }
+  | { op: 'redact'; id: string; gap?: number }
+  | { op: 'finalize'; gap?: number }
 
-// A longer mock transcript: ~50 words streaming in, with 5 ASR-style corrections
-// (cue→Q3, to→two, their→there, tree→three, ate→eight) and 2 redactions (Acme, Sarah).
-const SCRIPT: Step[] = [
-  W('1', 'okay'), W('2', 'so'), W('3', 'the'),
-  W('4', 'cue', 0.4), W('5', 'deck'), W('6', 'is'),
-  { op: 'fix', id: '4', text: 'Q3', gap: 620 },
-  W('7', 'nearly'), W('8', 'ready'), W('9', "let's"), W('10', 'loop'), W('11', 'in'),
-  W('12', 'Acme', 0.5, 320),
-  W('13', 'about'), W('14', 'the'),
-  W('15', 'to', 0.4), W('16', 'deadlines'),
-  { op: 'fix', id: '15', text: 'two', gap: 560 },
-  W('17', 'their', 0.45), W('18', 'are'),
-  W('19', 'tree', 0.4), W('20', 'open'), W('21', 'items'),
-  { op: 'fix', id: '17', text: 'there', gap: 460 },
-  { op: 'fix', id: '19', text: 'three', gap: 640 },
-  W('22', 'we'), W('23', 'still'), W('24', 'need'), W('25', 'to'), W('26', 'close'),
-  W('27', 'before'), W('28', 'Friday', 0.8, 300),
-  W('29', 'can'), W('30', 'you'), W('31', 'send'), W('32', 'the'),
-  W('33', 'revenue', 0.7), W('34', 'figures', 0.7),
-  W('35', 'to'), W('36', 'Sarah', 0.5, 320),
-  W('37', 'and'), W('38', 'update'), W('39', 'the'), W('40', 'margin'), W('41', 'slide'),
-  W('42', 'we'), W('43', 'were'), W('44', 'off'), W('45', 'by'), W('46', 'about'),
-  W('47', 'ate', 0.4), W('48', 'percent'),
-  { op: 'fix', id: '47', text: 'eight', gap: 560 },
-  W('49', 'last'), W('50', 'quarter', 0.85, 800),
-  // redaction pass at the end — you've read "Acme"/"Sarah" all sentence, now watch them masked
-  { op: 'redact', id: '12', gap: 850 },
-  { op: 'redact', id: '36', gap: 1100 },
-  { op: 'finalize', gap: 3600 },
-]
+const SCRIPT: Step[] = (seedSession.events as SeedEvent[]).map((e): Step => {
+  switch (e.op) {
+    case 'append':
+      return { op: 'add', id: e.id, text: e.text, conf: e.confidence, gap: e.gap }
+    case 'revise':
+      return { op: 'fix', id: e.id, text: e.text, gap: e.gap }
+    case 'redact':
+      return { op: 'redact', id: e.id, gap: e.gap }
+    case 'finalize':
+      return { op: 'finalize', gap: e.gap }
+  }
+})
 
 function TokenView({ token, effect }: { token: Token; effect: EffectKey }) {
   // Brief highlight the moment a word is corrected — makes every correction

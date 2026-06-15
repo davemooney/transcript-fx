@@ -1,21 +1,11 @@
 # transcript-fx
 
+> **The `*-fx` family** · **transcript-fx** — live, self-revising *transcription* · [reason-fx](https://github.com/davemooney/reason-fx) — make a model's *reasoning* honest and beautiful. Same house style, same craft, two domains.
+
 Live, self-revising transcription text — done with craft. As speech-to-text streams, words arrive *provisional*, **correct themselves in place**, and settle when final.
 
-Two runtimes at different generations:
-
-- **`swift/` — TranscriptFX v2**, a full transcript **presentation framework**: canonical input model (tiers, timestamps, confidence, speakers), an utterance-based reconciler with explicit revision events (revise/split/merge/speaker-change/sentence- and paragraph-breaks), and a speaker-aware paragraph renderer with rendering modes. → [`swift/README.md`](./swift/README.md)
-- **`core/` — `@transcript-fx/core` v0.1** (web), the original flat token renderer + reconciler per [`SPEC.md`](./SPEC.md).
-
-```
-   your ASR · Deepgram · WhisperKit · Apple SpeechAnalyzer
-                  │  normalize ↓
-            TranscriptUpdate                ← the only type you produce (Swift v2)
-                  │  ingest ↓
-            TranscriptSession / Reconciler  ← aligns tiers, keeps token identity,
-                  │  snapshot ↓                emits revision events
-            TranscriptView                  ← words · sentences · paragraphs · speakers
-```
+<!-- Hero: the seed session correcting itself (cue→Q3, to→two, …) + Acme/Sarah redaction, Diff-morph effect. See assets/README.md to record it. -->
+![transcript-fx — live corrections morphing in place](assets/hero.gif)
 
 ## The signature
 - **Ink-settle** — confidence becomes type *weight*: volatile is light, final gains ink.
@@ -23,33 +13,73 @@ Two runtimes at different generations:
 - **Swipe redaction** — a green block sweeps to mask sensitive spans.
 - **Correction flash** — a brief highlight so every revision is legible.
 
+One spec, two native runtimes — verified identical on a shared fixture, not by claim:
+
+- **`core/` — [`@transcript-fx/core`](./core)** (web): framework-agnostic `<revising-text>` Web Component + reconciler + adapters. Per [`SPEC.md`](./SPEC.md).
+- **`swift/` — [TranscriptFX](./swift)** (SwiftUI v2): a full transcript **presentation framework** — canonical input model (tiers, timestamps, confidence, speakers), an utterance-based reconciler with explicit revision events, and a speaker-aware paragraph renderer.
+
+```
+   your ASR · Deepgram · WhisperKit · Apple SpeechAnalyzer
+                  │  normalize ↓
+            ASRResult / TranscriptUpdate     ← the only type you produce
+                  │  ingest ↓
+            TranscriptReconciler             ← aligns tiers, keeps token identity,
+                  │  events ↓                  emits explicit RevisionEvents
+            <revising-text> / TranscriptView ← ink-settle · diff-morph · redaction
+```
+
 ---
 
-## Integrate (web) — 5 minutes
+## 30-second quickstart (web)
+
+```bash
+# in any Vite/webpack/ESM project — or just the repo's own lab:
+git clone https://github.com/davemooney/transcript-fx && cd transcript-fx
+npm install && npm run dev          # the React lab plays the seed session, looping
+```
+
+Drop it into your app:
+
+```js
+import '@transcript-fx/core'                          // registers <revising-text>
+import { bindReconciler } from '@transcript-fx/core'
+
+const recon = bindReconciler(document.querySelector('revising-text'))
+
+// feed it ANY ASR — map your model's output to { transcript|words, isFinal }
+recon.ingest({ transcript: 'hello wrld', isFinal: false }, 'draft')
+recon.ingest({ transcript: 'hello world', isFinal: true  }, 'refined') // "wrld"→"world" diff-morphs
+```
+
+```html
+<revising-text></revising-text>
+```
+
+That's it — ink-settle, diff-morph, and the correction flash come for free. → full web guide: [`core/README.md`](./core/README.md)
+
+## Integrate (web) — the fuller picture
 
 **Install** (local path for now; `@transcript-fx/core` once published):
 ```bash
-npm install /ABS/PATH/to/transcript-fx/core   # auto-builds on install
+npm install ./path/to/transcript-fx/core   # auto-builds on install
 ```
 
-**Use** — bind a reconciler to the element, feed it any ASR:
-```html
-<revising-text id="t"></revising-text>
-```
+**Use** — bind a reconciler, feed it any ASR, read explicit events if you want them:
 ```js
-import '@transcript-fx/core'                         // registers <revising-text>
+import '@transcript-fx/core'
 import { bindReconciler, deepgramToASR } from '@transcript-fx/core'
 
 const recon = bindReconciler(document.getElementById('t'))
 
 // ── from ANY source: map your model's output to ASRResult ──
 recon.ingest({ words: [{ text: 'their', start: 0, end: 0.4, confidence: 0.5 }], isFinal: false }, 'draft')
-recon.ingest({ words: [{ text: 'there', start: 0, end: 0.4, confidence: 0.98 }], isFinal: true  }, 'refined')
+const events = recon.ingest({ words: [{ text: 'there', start: 0, end: 0.4, confidence: 0.98 }], isFinal: true }, 'refined')
+// events → [{ type: 'revise', id, oldText: 'their', newText: 'there' }]  (drive haptics / a11y / logging)
 
 // ── or Deepgram, ready-made ──
 ws.onmessage = (e) => recon.ingest(deepgramToASR(JSON.parse(e.data)), 'draft')
 ```
-Minimum a source must give you: `{ transcript: "...", isFinal }` (or `words`). `confidence` unlocks ink-settle; `start/end` unlock clean two-source combining. → [`core/README.md`](./core/README.md)
+Minimum a source must give you: `{ transcript: "...", isFinal }` (or `words`). `confidence` unlocks ink-settle; `start/end` unlock clean two-source combining.
 
 ## Integrate (SwiftUI) — 5 minutes
 
@@ -80,19 +110,28 @@ struct LiveView: View {
 Corrections morph in place, sentences settle, paragraphs break on speaker change. Adapters for Apple Speech, WhisperKit, and Deepgram (with diarization) included. → [`swift/README.md`](./swift/README.md)
 
 ## Your local rig (the generic path)
-Whatever your model emits, build a `TranscriptUpdate` and `ingest` it:
-- **Strings only**: `TranscriptUpdate(text: "the quick brown", tier: .preview, isFinal: false)` — we tokenize; ink by state.
-- **Word-level** (better): `words: [TranscriptWord(text:start:end:confidence:speaker:)]` — timestamps unlock surgical alignment, confidence unlocks ink-settle, speakers unlock paragraphs.
-- **Two tiers** (fast + accurate): feed the fast one as `tier: .preview`, the accurate one as `tier: .refined` — the reconciler aligns corrections onto the preview (timestamps first, text second) and diff-morphs them. Same path for two tiers of one model or two separate models.
+Whatever your model emits, build the canonical result and `ingest` it:
+- **Strings only**: `{ transcript: "the quick brown", isFinal: false }` — we tokenize; ink by state.
+- **Word-level** (better): `words: [{ text, start, end, confidence }]` — timestamps unlock surgical alignment, confidence unlocks ink-settle.
+- **Two tiers** (fast + accurate): feed the fast one as `'draft'`, the accurate one as `'refined'` — the reconciler aligns corrections onto the preview (timestamps first, text second) and diff-morphs them. Same path for two tiers of one model or two separate models.
 
 ---
+
+## Parity is a test, not a claim
+
+Both runtimes replay the **same** recorded session — [`fixtures/seed-session.json`](./fixtures) (SPEC §5): 5 self-corrections + 2 redactions. The web core's [`fixture.test.ts`](./core/src/fixture.test.ts) asserts the exact `RevisionEvent` timeline (a frozen golden); the SwiftUI runtime asserts the same sequence. The React lab animates that very fixture, so the web playground and the Swift demo are the *same interaction, two runtimes*.
+
+```bash
+cd core && npm install && npm test     # 11/11 — incl. the cross-runtime parity golden
+```
 
 ## Layout
 | Path | What | Status |
 |---|---|---|
-| `swift/` | **`TranscriptFX` v2** — presentation framework: session + reconciler + TranscriptView + adapters | builds, **34/34 tests** |
-| [`SPEC.md`](./SPEC.md) | The v0.1 contract (still what `core/` implements) | — |
-| `core/` | **`@transcript-fx/core`** v0.1 — `<revising-text>` + reconciler + adapters | builds, renders, tested |
+| `core/` | **[`@transcript-fx/core`](./core)** `v0.1` — `<revising-text>` + reconciler + adapters + `RevisionEvent`s | builds, tested (11/11) |
+| `swift/` | **[TranscriptFX](./swift) v2** — presentation framework: session + reconciler + TranscriptView + adapters | builds, **34/34 tests** |
+| `fixtures/` | shared reference sessions both runtimes replay ([SPEC §5](./SPEC.md)) | — |
+| [`SPEC.md`](./SPEC.md) | the cross-runtime contract | — |
 | `src/` | React reference lab (visual playground: `npm i && npm run dev`) | runs |
 
-The web core still implements the v0.1 flat-token contract; the Swift package has moved to the v2 presentation-framework model documented in [`swift/README.md`](./swift/README.md). MIT.
+Dogfooded in **offrecørd**. MIT licensed — see [`LICENSE`](./LICENSE).
