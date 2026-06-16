@@ -1,24 +1,66 @@
 {
   "name": "@transcript-fx/core",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Framework-agnostic <revising-text> Web Component — live, self-revising transcription text (ink-settle + diff-morph + swipe redaction).",
   "license": "MIT",
+  "author": "Dave Mooney <dave.e.mooney@gmail.com> (https://davemooney.de)",
+  "homepage": "https://github.com/davemooney/transcript-fx#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/davemooney/transcript-fx.git",
+    "directory": "core"
+  },
+  "bugs": {
+    "url": "https://github.com/davemooney/transcript-fx/issues"
+  },
   "type": "module",
+  "sideEffects": [
+    "./dist/index.js"
+  ],
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" }
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
   },
-  "files": ["dist"],
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsup",
     "typecheck": "tsc --noEmit",
-    "prepare": "tsup"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepare": "tsup",
+    "prepublishOnly": "npm run typecheck && npm run test && npm run build"
   },
-  "keywords": ["web-component", "transcription", "deepgram", "speech-to-text", "ui"],
+  "keywords": [
+    "web-component",
+    "transcription",
+    "transcript",
+    "speech-to-text",
+    "asr",
+    "deepgram",
+    "whisper",
+    "live-text",
+    "streaming",
+    "ui",
+    "animation"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18"
+  },
   "devDependencies": {
+    "@types/node": "^25.9.3",
     "tsup": "^8.3.0",
-    "typescript": "^5.5.0"
+    "typescript": "^5.5.0",
+    "vitest": "^4.1.9"
   }
 }

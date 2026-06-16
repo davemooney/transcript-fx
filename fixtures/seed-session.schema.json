@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/davemooney/transcript-fx/fixtures/seed-session.schema.json",
+  "title": "transcript-fx reference session fixture",
+  "description": "A runtime-agnostic recorded session: an ordered timeline of source events (SPEC §1) both the web and SwiftUI runtimes replay to prove parity (SPEC §5).",
+  "type": "object",
+  "required": ["name", "events"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "name": { "type": "string" },
+    "description": { "type": "string" },
+    "config": {
+      "type": "object",
+      "properties": {
+        "confidenceThreshold": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["op"],
+        "properties": {
+          "op": { "enum": ["append", "revise", "redact", "finalize"] },
+          "id": { "type": "string", "description": "stable token identity (required for append/revise/redact)" },
+          "text": { "type": "string", "description": "token text (append/revise)" },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 1, "description": "model confidence (append)" },
+          "gap": { "type": "number", "minimum": 0, "description": "milliseconds to wait after this event when replaying live (presentation only — does not affect the reconciled result)" }
+        }
+      }
+    }
+  }
+}

@@ -1,13 +1,20 @@
 # transcript-fx — Spec (v0.1)
 
 > **Status:** this v0.1 contract is what `core/` (web) implements. The Swift
-> package has moved on to the **v2 presentation-framework contract** —
-> canonical `TranscriptUpdate` input (tiers · timestamps · confidence ·
-> speakers · utterances), an utterance-based reconciler with explicit
-> revision events (revise/replace/split/merge/speaker-change/sentence- and
-> paragraph-breaks), and a speaker-aware paragraph renderer with rendering
-> modes — documented in [`swift/README.md`](./swift/README.md). Porting v2
-> back to the web core is the natural next step.
+> package runs the larger **v2 presentation-framework contract** — canonical
+> `TranscriptUpdate` input (tiers · timestamps · confidence · speakers ·
+> utterances), an utterance-based reconciler with explicit revision events
+> (revise/replace/split/merge/speaker-change/sentence- and paragraph-breaks),
+> and a speaker-aware paragraph renderer with rendering modes — documented in
+> [`swift/README.md`](./swift/README.md).
+>
+> **Ported back to the web core (the parity-critical slice, #1007):** explicit
+> `RevisionEvent`s returned from every ingest, a per-token `revision` counter,
+> and the silent-preview-rewrite semantic (a volatile preview rewriting its own
+> un-committed word does NOT flash — only a real tier-2 correction does; the
+> SwiftUI #5125 contract). Verified web ≡ Swift on the shared fixtures (§5).
+> **Deferred** (not required by the seed fixture; web stays flat-token for now):
+> speaker-aware paragraphs, sentence segmentation, and word merge/split.
 
 The shared contract for "live, self-revising transcription text." Two native implementations (web + SwiftUI) conform to **this** — same input model, same behaviour, same config — so the SwiftUI build is a *port*, not a redesign.
 
