@@ -1,4 +1,4 @@
-# @transcript-fx/core
+# transcript-fx
 
 Framework-agnostic `<revising-text>` Web Component for live, self-revising transcription text — ink-settle, diff-morph corrections, swipe redaction. Works in React, Vue, Svelte, or plain HTML.
 
@@ -6,15 +6,15 @@ Framework-agnostic `<revising-text>` Web Component for live, self-revising trans
 ```bash
 # local (for now) — auto-builds on install via the prepare script
 npm install ./path/to/transcript-fx/core
-# once published:  npm install @transcript-fx/core
+# once published:  npm install transcript-fx
 ```
 Zero runtime dependencies. Ships ESM + type declarations. Node ≥ 18 for the
 test/build toolchain; the package itself runs in any modern browser.
 
 ## Quickest start
 ```js
-import '@transcript-fx/core'                  // registers the <revising-text> element
-import { bindReconciler } from '@transcript-fx/core'
+import 'transcript-fx'                  // registers the <revising-text> element
+import { bindReconciler } from 'transcript-fx'
 
 const recon = bindReconciler(document.querySelector('revising-text'))
 recon.ingest({ transcript: 'hello wrld', isFinal: false }, 'draft')
@@ -31,7 +31,7 @@ Required: `transcript` (or `words`) + `isFinal`. `confidence` → ink-settle; `s
 ## Sources
 ```js
 // Deepgram (ready-made)
-import { deepgramToASR } from '@transcript-fx/core'
+import { deepgramToASR } from 'transcript-fx'
 ws.onmessage = (e) => recon.ingest(deepgramToASR(JSON.parse(e.data)), 'draft')
 
 // Any local model → just build an ASRResult
@@ -61,7 +61,7 @@ This is the same contract the SwiftUI runtime pins, so web ≡ Swift.
 
 ## Replay a reference fixture
 ```js
-import { replaySession } from '@transcript-fx/core'
+import { replaySession } from 'transcript-fx'
 import seed from '../fixtures/seed-session.json' assert { type: 'json' }
 
 const { tokens, events } = replaySession(seed) // deterministic, timing-independent

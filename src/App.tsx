@@ -28,7 +28,7 @@ type Step =
   | { op: 'finalize'; gap?: number }
 
 // The visual lab replays the SHARED reference fixture (../fixtures/seed-session.json,
-// SPEC §5) — the exact same recorded session the @transcript-fx/core parity test and
+// SPEC §5) — the exact same recorded session the transcript-fx parity test and
 // the SwiftUI demo replay. One source of truth → this React lab and the Swift build
 // are provably the *same interaction, two runtimes*. Map the runtime-agnostic source
 // events (append/revise/redact/finalize) onto this lab's step shape.

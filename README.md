@@ -15,7 +15,7 @@ Live, self-revising transcription text — done with craft. As speech-to-text st
 
 One spec, two native runtimes — verified identical on a shared fixture, not by claim:
 
-- **`core/` — [`@transcript-fx/core`](./core)** (web): framework-agnostic `<revising-text>` Web Component + reconciler + adapters. Per [`SPEC.md`](./SPEC.md).
+- **`core/` — [`transcript-fx`](./core)** (web): framework-agnostic `<revising-text>` Web Component + reconciler + adapters. Per [`SPEC.md`](./SPEC.md).
 - **`swift/` — [TranscriptFX](./swift)** (SwiftUI v2): a full transcript **presentation framework** — canonical input model (tiers, timestamps, confidence, speakers), an utterance-based reconciler with explicit revision events, and a speaker-aware paragraph renderer.
 
 ```
@@ -41,8 +41,8 @@ npm install && npm run dev          # the React lab plays the seed session, loop
 Drop it into your app:
 
 ```js
-import '@transcript-fx/core'                          // registers <revising-text>
-import { bindReconciler } from '@transcript-fx/core'
+import 'transcript-fx'                          // registers <revising-text>
+import { bindReconciler } from 'transcript-fx'
 
 const recon = bindReconciler(document.querySelector('revising-text'))
 
@@ -59,15 +59,15 @@ That's it — ink-settle, diff-morph, and the correction flash come for free. �
 
 ## Integrate (web) — the fuller picture
 
-**Install** (local path for now; `@transcript-fx/core` once published):
+**Install** (local path for now; `transcript-fx` once published):
 ```bash
 npm install ./path/to/transcript-fx/core   # auto-builds on install
 ```
 
 **Use** — bind a reconciler, feed it any ASR, read explicit events if you want them:
 ```js
-import '@transcript-fx/core'
-import { bindReconciler, deepgramToASR } from '@transcript-fx/core'
+import 'transcript-fx'
+import { bindReconciler, deepgramToASR } from 'transcript-fx'
 
 const recon = bindReconciler(document.getElementById('t'))
 
@@ -128,7 +128,7 @@ cd core && npm install && npm test     # 11/11 — incl. the cross-runtime parit
 ## Layout
 | Path | What | Status |
 |---|---|---|
-| `core/` | **[`@transcript-fx/core`](./core)** `v0.1` — `<revising-text>` + reconciler + adapters + `RevisionEvent`s | builds, tested (11/11) |
+| `core/` | **[`transcript-fx`](./core)** `v0.1` — `<revising-text>` + reconciler + adapters + `RevisionEvent`s | builds, tested (11/11) |
 | `swift/` | **[TranscriptFX](./swift) v2** — presentation framework: session + reconciler + TranscriptView + adapters | builds, **34/34 tests** |
 | `fixtures/` | shared reference sessions both runtimes replay ([SPEC §5](./SPEC.md)) | — |
 | [`SPEC.md`](./SPEC.md) | the cross-runtime contract | — |

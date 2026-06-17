@@ -12,7 +12,7 @@ presentation-only `gap` (ms) per event so a demo can replay it live.
 
 ## Replaying it
 
-- **Web core** — `replaySession()` (`@transcript-fx/core`) drives a
+- **Web core** — `replaySession()` (`transcript-fx`) drives a
   `TranscriptReconciler` through the timeline and returns the emitted
   `RevisionEvent[]`. The parity test `core/src/fixture.test.ts` asserts the
   exact event sequence (a frozen golden) — that golden is the cross-runtime
