@@ -4,9 +4,7 @@ Framework-agnostic `<revising-text>` Web Component for live, self-revising trans
 
 ## Install
 ```bash
-# local (for now) — auto-builds on install via the prepare script
-npm install ./path/to/transcript-fx/core
-# once published:  npm install transcript-fx
+npm install transcript-fx
 ```
 Zero runtime dependencies. Ships ESM + type declarations. Node ≥ 18 for the
 test/build toolchain; the package itself runs in any modern browser.

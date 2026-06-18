@@ -7,6 +7,8 @@ Live, self-revising transcription text — done with craft. As speech-to-text st
 <!-- Hero: the seed session correcting itself (cue→Q3, to→two, …) + Acme/Sarah redaction, Diff-morph effect. See assets/README.md to record it. -->
 ![transcript-fx — live corrections morphing in place](assets/hero.gif)
 
+**▶ [Try the live playground](https://transcript-fx-playground.pages.dev)** — watch the seed session correct itself in your browser.
+
 ## The signature
 - **Ink-settle** — confidence becomes type *weight*: volatile is light, final gains ink.
 - **Diff-morph** — on a correction, only the *changed* characters animate.
@@ -59,9 +61,9 @@ That's it — ink-settle, diff-morph, and the correction flash come for free. �
 
 ## Integrate (web) — the fuller picture
 
-**Install** (local path for now; `transcript-fx` once published):
+**Install**:
 ```bash
-npm install ./path/to/transcript-fx/core   # auto-builds on install
+npm install transcript-fx
 ```
 
 **Use** — bind a reconciler, feed it any ASR, read explicit events if you want them:
@@ -129,9 +131,9 @@ cd core && npm install && npm test     # 11/11 — incl. the cross-runtime parit
 | Path | What | Status |
 |---|---|---|
 | `core/` | **[`transcript-fx`](./core)** `v0.1` — `<revising-text>` + reconciler + adapters + `RevisionEvent`s | builds, tested (11/11) |
-| `swift/` | **[TranscriptFX](./swift) v2** — presentation framework: session + reconciler + TranscriptView + adapters | builds, **34/34 tests** |
+| `swift/` | **[TranscriptFX](./swift) v2** — presentation framework: session + reconciler + TranscriptView + adapters | builds, **45/45 tests** |
 | `fixtures/` | shared reference sessions both runtimes replay ([SPEC §5](./SPEC.md)) | — |
 | [`SPEC.md`](./SPEC.md) | the cross-runtime contract | — |
-| `src/` | React reference lab (visual playground: `npm i && npm run dev`) | runs |
+| `src/` | React reference lab — **[live playground ↗](https://transcript-fx-playground.pages.dev)** (or `npm i && npm run dev`) | runs |
 
 Dogfooded in **offrecørd**. MIT licensed — see [`LICENSE`](./LICENSE).
